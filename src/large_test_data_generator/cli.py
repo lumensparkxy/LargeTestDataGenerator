@@ -7,6 +7,7 @@ import argparse
 import sys
 import os
 from large_test_data_generator.data_generator import generate_data
+from large_test_data_generator.logger import logger
 
 
 def main():
@@ -21,17 +22,28 @@ def main():
         help="Path to the parameter JSON file.",
         default="customer_master_parameters.json"
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        help="Enable verbose logging",
+        action="store_true"
+    )
     args = parser.parse_args()
 
+    # Set logging level based on verbosity
+    if args.verbose:
+        import logging
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Verbose logging enabled")
+
     if not os.path.exists(args.parameters):
-        print(f"Error: Parameter file '{args.parameters}' not found.", file=sys.stderr)
+        logger.error(f"Error: Parameter file '{args.parameters}' not found.")
         sys.exit(1)
 
     try:
         generate_data(args.parameters)
-        print(f"Data generation completed successfully.")
+        logger.info("Data generation completed successfully.")
     except Exception as e:
-        print(f"Error generating data: {e}", file=sys.stderr)
+        logger.error(f"Error generating data: {e}")
         sys.exit(1)
 
 

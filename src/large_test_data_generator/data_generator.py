@@ -446,7 +446,18 @@ def generate_data(parameter_file: str) -> None:
         parameter_file (str): Path to the parameter JSON file.
     """
     try:
+        from .config import load_config
+        
         logger.info(f"Starting data generation using parameters from '{parameter_file}'")
+        
+        # Load configuration
+        config = load_config(parameter_file)
+        separator = config.get_separator()
+        columns = config.get_column_definitions()
+        filename = config.get_output_filename()
+        row_count = config.get_row_count()
+        
+        logger.info(f"Loaded configuration with {len(columns)} columns")
         
         # Initialize data structures
         country_array = initialize_country_list()
@@ -457,35 +468,16 @@ def generate_data(parameter_file: str) -> None:
         
         my_file = {}
 
-        # Read parameter file
-        try:
-            with open(parameter_file) as data_file:
-                data = json.load(data_file)
-            separator = data["separator"]
-            logger.info(f"Loaded parameter file with {len(data['columns'])} columns")
-        except FileNotFoundError:
-            logger.error(f"Parameter file '{parameter_file}' not found")
-            raise
-        except json.JSONDecodeError:
-            logger.error(f"Parameter file '{parameter_file}' contains invalid JSON")
-            raise
-        except KeyError as e:
-            logger.error(f"Parameter file missing required key: {e}")
-            raise
-
         # Generate and write data
         try:
-            with open(data["filename"], 'w', encoding="utf8") as f:
-                logger.info(f"Generating {data['number_of_rows']} rows of data")
-                for i in range(data["number_of_rows"]):
+            with open(filename, 'w', encoding="utf8") as f:
+                logger.info(f"Generating {row_count} rows of data")
+                for i in range(row_count):
                     if i > 0 and i % 1000 == 0:
                         logger.info(f"Generated {i} rows...")
-                    each_row = create_row(data["columns"], separator, country_array, phone_array, my_file).rstrip('\n')
+                    each_row = create_row(columns, separator, country_array, phone_array, my_file).rstrip('\n')
                     print(each_row, file=f)
-                logger.info(f"Successfully generated {data['number_of_rows']} rows of data")
-        except KeyError as e:
-            logger.error(f"Missing required key in parameter file: {e}")
-            raise
+                logger.info(f"Successfully generated {row_count} rows of data")
         except Exception as e:
             logger.error(f"Error writing data to file: {e}")
             raise
