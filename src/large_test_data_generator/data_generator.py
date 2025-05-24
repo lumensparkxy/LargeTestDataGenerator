@@ -13,6 +13,10 @@ import time
 import uuid
 import os
 import pymongo
+from .mongodb_utils import (
+    get_country_list, get_phone_list, get_credit_card_info, get_address_from_db
+)
+from .logger import logger
 
 # Type aliases for better readability
 ColumnDefinition = Dict[str, Any]
@@ -26,17 +30,12 @@ def initialize_country_list() -> List[str]:
     Returns:
         List[str]: A list of country codes, with frequency based on weights.
     """
-    uri = f'mongodb://{os.environ.get("MONGOUSER")}:{os.environ.get("MONGOPASSWORD")}@{os.environ.get("MONGOSERVER")}:27017'
-    country_client = pymongo.MongoClient(uri)
-    country_db = country_client.iso
-    country_coll = country_db.details
-    country_cursor = country_coll.find({'for_address': 1})
-
-    country_list = []
-    for a in country_cursor:
-        temp = [a['alpha-2']] * int(a['weight'])
-        country_list.extend(temp)
-    return country_list
+    try:
+        return get_country_list()
+    except Exception as e:
+        logger.error(f"Error initializing country list: {e}")
+        # Fallback to a default list
+        return ["US", "CA", "GB", "DE", "FR", "IT", "ES", "CH", "AU"]
 
 
 def initialize_phone_list() -> List[Dict[str, Any]]:
@@ -46,17 +45,12 @@ def initialize_phone_list() -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: A list of phone number information.
     """
-    uri = f'mongodb://{os.environ.get("MONGOUSER")}:{os.environ.get("MONGOPASSWORD")}@{os.environ.get("MONGOSERVER")}:27017'
-    phone_client = pymongo.MongoClient(uri)
-    phone_db = phone_client.iso
-    phone_coll = phone_db.details
-    phone_cursor = phone_coll.find({}, {'_id': 0, 'alpha-2': 1, 'dialCode': 1, 'eg_phone_number': 1})
-    
-    phone_list = []
-    for phone_number in phone_cursor:
-        phone_list.append(phone_number)
-    
-    return phone_list
+    try:
+        return get_phone_list()
+    except Exception as e:
+        logger.error(f"Error initializing phone list: {e}")
+        # Return an empty list if there's an error
+        return []
 
 
 def get_phone_number(region_code: str, phone_array: List[Dict[str, Any]]) -> str:
@@ -123,32 +117,18 @@ def is_valid_card(card_number: str) -> bool:
     return total_sum % 10 == 0
 
 
-def get_credit_card(country: str, bank_name: str, card_type: str) -> str:
+def generate_credit_card(prefix: str, length: int) -> str:
     """
-    Generate a valid credit card number for the specified country, bank, and card type.
+    Generate a valid credit card number with a given prefix and length.
     
     Args:
-        country (str): Country code.
-        bank_name (str): Bank name.
-        card_type (str): Card type (e.g., "mastercard", "visa").
+        prefix (str): The BIN (Bank Identification Number) prefix for the card.
+        length (int): The total length of the card number.
         
     Returns:
         str: A valid credit card number.
     """
-    uri = f'mongodb://{os.environ.get("MONGOUSER")}:{os.environ.get("MONGOPASSWORD")}@{os.environ.get("MONGOSERVER")}:27017'
-    client = pymongo.MongoClient(uri)
-    db = client.creditcards
-    cursor = db.details
-    
-    x = cursor.find({'country': country, 'bank_name': bank_name, 'card_type': card_type})
-    count = x.count()
-    if count == 0:
-        return ""
-        
-    this_instance = x[random.randint(0, count-1)]
-    prefix = this_instance['bin_range']
-    
-    length = int(this_instance['number_length'])
+    # Generate the body of the card number
     credit_card = prefix
     for i in range(1, length-len(prefix)):
         credit_card += str(random.choice(range(0, 10)))
@@ -157,9 +137,9 @@ def get_credit_card(country: str, bank_name: str, card_type: str) -> str:
     for i in range(0, 10):
         candidate = credit_card + str(i)
         if is_valid_card(candidate):
-            credit_card = candidate
-            break
+            return candidate
     
+    # If no valid check digit found (extremely rare), return as is
     return credit_card
 
 
@@ -173,47 +153,30 @@ def get_address(country: str) -> Optional[Dict[str, Any]]:
     Returns:
         Optional[Dict[str, Any]]: A random address or None if not found.
     """
-    uri = f'mongodb://{os.environ.get("MONGOUSER")}:{os.environ.get("MONGOPASSWORD")}@{os.environ.get("MONGOSERVER")}:27017'
-    address_client = pymongo.MongoClient(uri)
-    address_db = address_client.postal_address
-    address_cursor = address_db.details
-    
-    x = address_cursor.aggregate([
-        {'$sample': {'size': 1}},
-        {'$match': {'country': country}},
-        {'$out': 'random_address'}
-    ])
-    address_client.close()
-    
-    address_client = pymongo.MongoClient(uri)
-    address_db = address_client.postal_address
-    address_cursor = address_db.random_address
-    
-    if address_cursor.count() == 0:
+    try:
+        return get_address_from_db(country)
+    except Exception as e:
+        logger.error(f"Error getting address for country {country}: {e}")
         return None
-    else:
-        single_one = address_cursor.find({}, {'_id': 0})
-        return single_one[0]
 
 
-def get_sample_address(country: str) -> Optional[Dict[str, Any]]:
+def initialize_credit_card_list(country: str, bank: str, card_type: str) -> List[Dict[str, Any]]:
     """
-    Get a sample address with retry logic.
+    Initialize a list of credit card information.
     
     Args:
         country (str): Country code.
+        bank (str): Bank name.
+        card_type (str): Card type.
         
     Returns:
-        Optional[Dict[str, Any]]: A sample address or None if not found after retries.
+        List[Dict[str, Any]]: List of credit card information.
     """
-    retry_count = 0
-    while retry_count < 5:
-        single_address = get_address(country)
-        if single_address is not None:
-            return single_address
-        else:
-            retry_count += 1
-    return None
+    try:
+        return get_credit_card_info(country, bank, card_type)
+    except Exception as e:
+        logger.error(f"Error getting credit card info for {country}/{bank}/{card_type}: {e}")
+        return []
 
 
 def initialize_list(filename: str) -> List[str]:
@@ -279,6 +242,26 @@ def get_any_item_from_list(filename: str, my_file: Dict[str, Any]) -> Optional[s
         return None
 
 
+def get_sample_address(country: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a sample address with retry logic.
+    
+    Args:
+        country (str): Country code.
+        
+    Returns:
+        Optional[Dict[str, Any]]: A sample address or None if not found after retries.
+    """
+    retry_count = 0
+    while retry_count < 5:
+        single_address = get_address(country)
+        if single_address is not None:
+            return single_address
+        else:
+            retry_count += 1
+    return None
+
+
 def initialize_db(parameter: str) -> List[Dict[str, Any]]:
     """
     Initialize database with addresses for a specific country.
@@ -289,86 +272,22 @@ def initialize_db(parameter: str) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: List of addresses.
     """
-    uri = f'mongodb://{os.environ.get("MONGOUSER")}:{os.environ.get("MONGOPASSWORD")}@{os.environ.get("MONGOSERVER")}:27017'
-    address_client = pymongo.MongoClient(uri)
-    address_db = address_client.postal_address
-    address_cursor = address_db.details
-    
-    x = address_cursor.aggregate([
-        {'$sample': {'size': 10000}},
-        {'$match': {'country': parameter}},
-        {'$out': 'random_address'}
-    ])
-    address_client.close()
-    
-    address_client = pymongo.MongoClient(uri)
-    address_db = address_client.postal_address
-    address_cursor = address_db.random_address
-    
-    addresses = address_cursor.find({}, {'_id': 0})
-    
-    temp_list = []
-    for each_address in addresses:
-        temp_list.append(each_address)
-    
-    return temp_list
-
-
-def get_item_from_db(parameter: str, my_file: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Get and remove an item from a database.
-    
-    Args:
-        parameter (str): Country code.
-        my_file (Dict[str, Any]): Dictionary storing database contents.
-        
-    Returns:
-        Optional[Dict[str, Any]]: An item from the database or None if not found.
-    """
-    if parameter in my_file:
-        if len(my_file[parameter]) > 0:
-            return my_file[parameter].pop(0)
-        else:
-            return None
-    else:
-        my_file[parameter] = initialize_db(parameter)
-        if len(my_file[parameter]) > 0:
-            return my_file[parameter].pop(0)
-        return None
-
-
-def initialize_credit_card_list(country: str, bank: str, card_type: str) -> List[Dict[str, Any]]:
-    """
-    Initialize a list of credit card information.
-    
-    Args:
-        country (str): Country code.
-        bank (str): Bank name.
-        card_type (str): Card type.
-        
-    Returns:
-        List[Dict[str, Any]]: List of credit card information.
-    """
-    uri = f'mongodb://{os.environ.get("MONGOUSER")}:{os.environ.get("MONGOPASSWORD")}@{os.environ.get("MONGOSERVER")}:27017'
-    cc_client = pymongo.MongoClient(uri)
-    cc_db = cc_client.creditcards
-    cc_cursor = cc_db.details
-    
-    cc = cc_cursor.find(
-        {'country': country, 'bank_name': bank, 'card_type': card_type},
-        {'_id': 0}
-    )
-    
-    temp_list = []
-    for each_cc in cc:
-        temp_list.append(each_cc)
-    
-    return temp_list
+    try:
+        # Get multiple addresses for the country
+        addresses = []
+        for _ in range(10):  # Try to get 10 addresses
+            address = get_address_from_db(parameter)
+            if address:
+                addresses.append(address)
+        return addresses
+    except Exception as e:
+        logger.error(f"Error initializing database for country {parameter}: {e}")
+        return []
 
 
 def db_get_credit_card(country: str, bank: str, card_type: str, my_file: Dict[str, Any]) -> str:
     """
-    Get a credit card from the database.
+    Get a credit card from the database with caching.
     
     Args:
         country (str): Country code.
@@ -393,20 +312,32 @@ def db_get_credit_card(country: str, bank: str, card_type: str, my_file: Dict[st
 
     this_instance = random.choice(x)
     prefix = this_instance['bin_range']
-    
     length = int(this_instance['number_length'])
-    credit_card = prefix
-    for i in range(1, length-len(prefix)):
-        credit_card += str(random.choice(range(0, 10)))
     
-    # Find a valid check digit
-    for i in range(0, 10):
-        pp = credit_card + str(i)
-        if is_valid_card(pp):
-            credit_card = pp
-            break
+    return generate_credit_card(prefix, length)
+
+
+def get_item_from_db(parameter: str, my_file: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Get and remove an item from a database.
     
-    return credit_card
+    Args:
+        parameter (str): Country code.
+        my_file (Dict[str, Any]): Dictionary storing database contents.
+        
+    Returns:
+        Optional[Dict[str, Any]]: An item from the database or None if not found.
+    """
+    if parameter in my_file:
+        if len(my_file[parameter]) > 0:
+            return my_file[parameter].pop(0)
+        else:
+            return None
+    else:
+        my_file[parameter] = initialize_db(parameter)
+        if len(my_file[parameter]) > 0:
+            return my_file[parameter].pop(0)
+        return None
 
 
 def create_row(column_definitions: List[ColumnDefinition], separator: str, 
@@ -514,21 +445,54 @@ def generate_data(parameter_file: str) -> None:
     Args:
         parameter_file (str): Path to the parameter JSON file.
     """
-    # Initialize data structures
-    country_array = initialize_country_list()
-    phone_array = initialize_phone_list()
-    my_file = {}
+    try:
+        logger.info(f"Starting data generation using parameters from '{parameter_file}'")
+        
+        # Initialize data structures
+        country_array = initialize_country_list()
+        logger.info(f"Initialized country list with {len(country_array)} entries")
+        
+        phone_array = initialize_phone_list()
+        logger.info(f"Initialized phone list with {len(phone_array)} entries")
+        
+        my_file = {}
 
-    # Read parameter file
-    with open(parameter_file) as data_file:
-        data = json.load(data_file)
-    separator = data["separator"]
+        # Read parameter file
+        try:
+            with open(parameter_file) as data_file:
+                data = json.load(data_file)
+            separator = data["separator"]
+            logger.info(f"Loaded parameter file with {len(data['columns'])} columns")
+        except FileNotFoundError:
+            logger.error(f"Parameter file '{parameter_file}' not found")
+            raise
+        except json.JSONDecodeError:
+            logger.error(f"Parameter file '{parameter_file}' contains invalid JSON")
+            raise
+        except KeyError as e:
+            logger.error(f"Parameter file missing required key: {e}")
+            raise
 
-    # Generate and write data
-    with open(data["filename"], 'w', encoding="utf8") as f:
-        for i in range(data["number_of_rows"]):
-            each_row = create_row(data["columns"], separator, country_array, phone_array, my_file).rstrip('\n')
-            print(each_row, file=f)
+        # Generate and write data
+        try:
+            with open(data["filename"], 'w', encoding="utf8") as f:
+                logger.info(f"Generating {data['number_of_rows']} rows of data")
+                for i in range(data["number_of_rows"]):
+                    if i > 0 and i % 1000 == 0:
+                        logger.info(f"Generated {i} rows...")
+                    each_row = create_row(data["columns"], separator, country_array, phone_array, my_file).rstrip('\n')
+                    print(each_row, file=f)
+                logger.info(f"Successfully generated {data['number_of_rows']} rows of data")
+        except KeyError as e:
+            logger.error(f"Missing required key in parameter file: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error writing data to file: {e}")
+            raise
+            
+    except Exception as e:
+        logger.error(f"Error generating data: {e}")
+        raise
 
 
 if __name__ == "__main__":
