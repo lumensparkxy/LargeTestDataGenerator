@@ -107,4 +107,4 @@ The tool can connect to MongoDB to retrieve and generate data. Set the following
 
 ## License
 
-MIT
+Released under the [MIT License](LICENSE).
