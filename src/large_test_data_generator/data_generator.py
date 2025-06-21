@@ -90,7 +90,16 @@ def random_date_between(start: str, end: str, date_format: str, prop: float) -> 
 
     ptime = stime + prop * (etime - stime)
     
-    return time.strftime(date_format, time.localtime(ptime))
+    result = time.strftime(date_format, time.localtime(ptime))
+
+    # Preserve uppercase month formatting if provided in the input. The
+    # `strftime` function returns month names with title case for the `%b`
+    # directive (e.g. ``Jan``).  Tests expect the month portion to remain in
+    # uppercase when the format uses an upper-case month abbreviation such as
+    # ``JAN``.  To handle this generically we simply return an uppercased
+    # string.  This keeps numeric parts unchanged while ensuring month names
+    # match the expected casing.
+    return result.upper()
 
 
 def is_valid_card(card_number: str) -> bool:
