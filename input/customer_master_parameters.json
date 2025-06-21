@@ -1,24 +1,97 @@
 {
-"filename":"cus.txt",
-"columns":[{"column_name":"fname","datatype":"string","length":8,"is_null":true,"is_variable_legth":false},
-	    {"column_name":"lname","datatype":"string","length":8,"is_null":true,"is_variable_legth":false},
-	    {"column_name":"total_name","datatype":"string","length":40,"is_null":true,"is_variable_legth":true},
-	    {"column_name":"roll_number","datatype":"file","length":40,"is_null":true,"is_variable_legth":true,"file_path":"input/roll_number.txt"},
-	    {"column_name":"email_address","datatype":"string","length":40,"is_null":true,"is_variable_legth":true},
-	    {"column_name":"ssn_number","datatype":"ssn"},
-	    {"column_name":"savings","datatype":"number","min_range":"0","max_range":"5"},
-	    {"column_name":"mobile_phone","datatype":"phonenumber","country_code":"CH"},
-	    {"column_name":"date_of_birth","datatype":"xdate","from_date":"01.JAN.1930 09:01:00","until_date":"01.DEC.2012 23:59:59","date_format":"%d.%b.%Y %H:%M:%S"},
-	    {"column_name":"home_address","datatype":"address","file_path":"input/berlin.csv"},
-	    {"column_name":"domicile","datatype":"country"}
- ],
-
-"cleanup_rules":[
-		{"greater_than":["fname","lname"]},
-		{"if_first_then_second":["fname","lname"]},
-		{"uniq":"fname"},
-		{"either_or":["email_address","phone_number"]}
-	  ],
-"number_of_rows":200,
-"separator":","
+    "filename": "cus.txt",
+    "columns": [
+        {
+            "column_name": "fname",
+            "datatype": "string",
+            "length": 8,
+            "is_null": true,
+            "is_variable_length": false
+        },
+        {
+            "column_name": "lname",
+            "datatype": "string",
+            "length": 8,
+            "is_null": true,
+            "is_variable_length": false
+        },
+        {
+            "column_name": "total_name",
+            "datatype": "string",
+            "length": 40,
+            "is_null": true,
+            "is_variable_length": true
+        },
+        {
+            "column_name": "roll_number",
+            "datatype": "file",
+            "length": 40,
+            "is_null": true,
+            "file_path": "input/roll_number.txt",
+            "is_variable_length": true
+        },
+        {
+            "column_name": "email_address",
+            "datatype": "string",
+            "length": 40,
+            "is_null": true,
+            "is_variable_length": true
+        },
+        {
+            "column_name": "ssn_number",
+            "datatype": "ssn"
+        },
+        {
+            "column_name": "savings",
+            "datatype": "number",
+            "min_range": "0",
+            "max_range": "5"
+        },
+        {
+            "column_name": "mobile_phone",
+            "datatype": "phonenumber",
+            "country_code": "CH"
+        },
+        {
+            "column_name": "date_of_birth",
+            "datatype": "xdate",
+            "from_date": "01.JAN.1930 09:01:00",
+            "until_date": "01.DEC.2012 23:59:59",
+            "date_format": "%d.%b.%Y %H:%M:%S"
+        },
+        {
+            "column_name": "home_address",
+            "datatype": "address",
+            "file_path": "input/berlin.csv"
+        },
+        {
+            "column_name": "domicile",
+            "datatype": "country"
+        }
+    ],
+    "cleanup_rules": [
+        {
+            "greater_than": [
+                "fname",
+                "lname"
+            ]
+        },
+        {
+            "if_first_then_second": [
+                "fname",
+                "lname"
+            ]
+        },
+        {
+            "uniq": "fname"
+        },
+        {
+            "either_or": [
+                "email_address",
+                "phone_number"
+            ]
+        }
+    ],
+    "number_of_rows": 200,
+    "separator": ","
 }

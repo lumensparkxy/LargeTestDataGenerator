@@ -45,7 +45,7 @@ The parameter file is a JSON file that controls everything. It contains all the 
 | `columns.column_name` | Column name |
 | `columns.datatype` | Data type of column. It can be **string** or **reference to another column** or **values in file** |
 | `columns.length` | Length of the column |
-| `columns.is_variable_legth` | If the length can vary or is fixed length. Values: `true` or `false` |
+| `columns.is_variable_length` | If the length can vary or is fixed length. Values: `true` or `false` |
 | `columns.is_null` | Is null allowed. If `true` then length can be 0 |
 | `columns.file_path` | If the datatype is `file`, it looks for the values from the file at this path |
 | `separator` | Separator between the columns |
@@ -82,7 +82,7 @@ The parameter file is a JSON file that controls everything. It contains all the 
       "datatype": "string",
       "length": 30,
       "is_null": false,
-      "is_variable_legth": true
+      "is_variable_length": true
     },
     {
       "column_name": "birthdate",
