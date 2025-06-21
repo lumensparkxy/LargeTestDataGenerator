@@ -362,7 +362,7 @@ def create_row(column_definitions: List[ColumnDefinition], separator: str,
     for x in column_definitions:
         # Handle different data types
         if x["datatype"] == "string":
-            if x["is_variable_legth"]:
+            if x["is_variable_length"]:
                 if x["is_null"]:
                     ll = random.randint(0, x["length"])
                 else:

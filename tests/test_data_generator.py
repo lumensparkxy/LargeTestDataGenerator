@@ -57,7 +57,7 @@ class TestDataGenerator(unittest.TestCase):
         
         # Create test data
         column_definitions = [
-            {"datatype": "string", "is_variable_legth": False, "is_null": False, "length": 5},
+            {"datatype": "string", "is_variable_length": False, "is_null": False, "length": 5},
             {"datatype": "number", "min_range": "1", "max_range": "2"},
         ]
         separator = ","
