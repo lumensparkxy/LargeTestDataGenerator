@@ -35,24 +35,25 @@ class TestDataGenerator(unittest.TestCase):
         
         # Test with prop = 0 (should be start date)
         result = random_date_between(start, end, date_format, 0)
-        self.assertEqual(result, start)
+        self.assertEqual(result, "01.Jan.2000 00:00:00")
         
         # Test with prop = 1 (should be end date)
         result = random_date_between(start, end, date_format, 1)
-        self.assertEqual(result, end)
+        self.assertEqual(result, "31.Dec.2020 23:59:59")
         
         # Test with prop = 0.5 (should be between)
         result = random_date_between(start, end, date_format, 0.5)
         self.assertNotEqual(result, start)
         self.assertNotEqual(result, end)
     
-    @patch('src.large_test_data_generator.data_generator.random')
-    def test_create_row(self, mock_random):
+    @patch('src.large_test_data_generator.data_generator.random.randrange')
+    @patch('src.large_test_data_generator.data_generator.random.choice')
+    @patch('src.large_test_data_generator.data_generator.random.random')
+    def test_create_row(self, mock_random_random, mock_choice, mock_randrange):
         """Test row creation with mocked random functions."""
-        # Mock random functions
-        mock_random.choice.side_effect = lambda x: x[0]
-        mock_random.randint.return_value = 5
-        mock_random.random.return_value = 0.5
+        mock_choice.side_effect = lambda x: x[0]
+        mock_random_random.return_value = 0.5
+        mock_randrange.return_value = 42
         
         # Create test data
         column_definitions = [
@@ -66,11 +67,9 @@ class TestDataGenerator(unittest.TestCase):
         
         # Test create_row
         result = create_row(column_definitions, separator, country_array, phone_array, my_file)
-        
+
         # Verify results
-        self.assertIn(",", result)
-        parts = result.split(",")
-        self.assertEqual(len(parts), 2)
+        self.assertEqual(result, '"aaaaa","42"')
 
 
 if __name__ == "__main__":
