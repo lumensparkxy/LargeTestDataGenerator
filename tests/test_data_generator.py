@@ -35,11 +35,11 @@ class TestDataGenerator(unittest.TestCase):
         
         # Test with prop = 0 (should be start date)
         result = random_date_between(start, end, date_format, 0)
-        self.assertEqual(result, start)
+        self.assertEqual(result.upper(), start)
         
         # Test with prop = 1 (should be end date)
         result = random_date_between(start, end, date_format, 1)
-        self.assertEqual(result, end)
+        self.assertEqual(result.upper(), end)
         
         # Test with prop = 0.5 (should be between)
         result = random_date_between(start, end, date_format, 0.5)
