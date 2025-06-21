@@ -33,6 +33,8 @@ def main():
     if args.verbose:
         import logging
         logger.setLevel(logging.DEBUG)
+        for handler in logger.handlers:
+            handler.setLevel(logging.DEBUG)
         logger.debug("Verbose logging enabled")
 
     if not os.path.exists(args.parameters):
